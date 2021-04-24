@@ -1,0 +1,46 @@
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [linux, windows]
+        arch: [amd64]
+        include:
+          - os: linux
+            arch: arm
+          - os: linux
+            arch: arm64
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v1
+      - name: Setup Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: '^1.16'
+      - uses: actions/cache@v2
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ matrix.os }}-${{ matrix.arch }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ matrix.os }}-${{ matrix.arch }}-go-
+            ${{ matrix.os }}-go-
+      - run: go test ./...
+        env:
+          OS: ${{ matrix.os }}
+      - name: Build
+        run: go build -o dist/cert-watcher-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.os == 'windows' && '.exe' || '' }} ./cmd/cert-watcher
+        env:
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.arch }}
+      - name: Upload
+        uses: actions/upload-artifact@v2
+        with:
+          name: cert-watcher-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.os == 'windows' && '.exe' || '' }}
+          path: dist/cert-watcher-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.os == 'windows' && '.exe' || '' }}

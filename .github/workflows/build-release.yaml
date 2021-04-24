@@ -1,0 +1,73 @@
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [linux, windows]
+        arch: [amd64]
+        include:
+          - os: linux
+            arch: arm
+          - os: linux
+            arch: arm64
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v1
+      - name: Setup Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: '^1.16'
+      - uses: actions/cache@v2
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ matrix.os }}-${{ matrix.arch }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ matrix.os }}-${{ matrix.arch }}-go-
+            ${{ matrix.os }}-go-
+      - run: go test ./...
+        env:
+          OS: ${{ matrix.os }}
+      - name: Build
+        run: go build -o dist/cert-watcher-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.os == 'windows' && '.exe' || '' }} ./cmd/cert-watcher
+        env:
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.arch }}
+      - name: Upload executable
+        uses: actions/upload-artifact@v2
+        with:
+          name: cert-watcher-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.os == 'windows' && '.exe' || '' }}
+          path: dist/cert-watcher-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.os == 'windows' && '.exe' || '' }}
+
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    needs: ['build']
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          name: cert-watcher-linux-amd64
+      - uses: actions/download-artifact@v2
+        with:
+          name: cert-watcher-linux-arm
+      - uses: actions/download-artifact@v2
+        with:
+          name: cert-watcher-linux-arm64
+      - uses: actions/download-artifact@v2
+        with:
+          name: cert-watcher-windows-amd64.exe
+
+      - uses: marvinpinto/action-automatic-releases@v1.1.1
+        with:
+          repo_token: ${{ secrets.RELEASE_TOKEN }}
+          prerelease: false
+          files: |
+            cert-watcher-linux-amd64
+            cert-watcher-linux-arm
+            cert-watcher-linux-arm64
+            cert-watcher-windows-amd64.exe
