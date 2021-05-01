@@ -8,7 +8,7 @@ RUN set -ex; \
   wget -O /usr/local/bin/cert-watcher "https://github.com/RobertMe/cert-watcher/releases/download/$VERSION/$FILENAME"; \
   chmod +x /usr/local/bin/cert-watcher
 
-CMD ['cert-watcher']
+CMD ["/usr/local/bin/cert-watcher"]
 
 LABEL org.opencontainers.image.vendor="RobertMe" \
 	org.opencontainers.image.url="https://github.com/RobertMe/cert-watcher" \
