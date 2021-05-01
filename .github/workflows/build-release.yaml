@@ -34,10 +34,11 @@ jobs:
         env:
           OS: ${{ matrix.os }}
       - name: Build
-        run: go build -o dist/cert-watcher-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.os == 'windows' && '.exe' || '' }} ./cmd/cert-watcher
+        run: go build -ldflags "-s -w" -o dist/cert-watcher-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.os == 'windows' && '.exe' || '' }} ./cmd/cert-watcher
         env:
           GOOS: ${{ matrix.os }}
           GOARCH: ${{ matrix.arch }}
+          CGO_ENABLED: 0
       - name: Upload executable
         uses: actions/upload-artifact@v2
         with:
