@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
+	"flag"
 	"github.com/RobertMe/cert-watcher/pkg/config/static"
 	"github.com/RobertMe/cert-watcher/pkg/controller"
 	subscriberChain "github.com/RobertMe/cert-watcher/pkg/subscriber/chain"
 	watcherChain "github.com/RobertMe/cert-watcher/pkg/watcher/chain"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"os"
 	"os/signal"
@@ -13,6 +15,16 @@ import (
 )
 
 func main() {
+	debug := flag.Bool("debug", false, "sets log level to debug")
+
+	flag.Parse()
+
+	if *debug {
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	} else {
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	}
+
 	log.Info().Msg("Start cert-watcher")
 
 	// TODO: flag
