@@ -4,29 +4,41 @@ import (
 	"context"
 	"github.com/RobertMe/cert-watcher/pkg/config/static"
 	"github.com/RobertMe/cert-watcher/pkg/controller"
-	chain2 "github.com/RobertMe/cert-watcher/pkg/subscriber/chain"
-	"github.com/RobertMe/cert-watcher/pkg/watcher/chain"
+	subscriberChain "github.com/RobertMe/cert-watcher/pkg/subscriber/chain"
+	watcherChain "github.com/RobertMe/cert-watcher/pkg/watcher/chain"
+	"github.com/rs/zerolog/log"
 	"os"
 	"os/signal"
 	"syscall"
 )
 
 func main() {
+	log.Info().Msg("Start cert-watcher")
+
 	// TODO: flag
 	config, err := static.ReadConfiguration("")
 	if err != nil {
-		// TODO: log/show
+		log.Fatal().Err(err).Msg("Unable to read configuration file")
 		return
 	}
 
-	watchers := chain.NewWatcherChain(*config.Watchers)
-	subscribers := chain2.NewSubscriberChain(*config.Subscribers)
+	log.Info().Interface("config", config).Msg("Loaded configuration")
+
+	log.Debug().Msg("Creating watchers and subscribers")
+	watchers := watcherChain.NewWatcherChain(*config.Watchers)
+	subscribers := subscriberChain.NewSubscriberChain(*config.Subscribers)
+	log.Debug().Msg("Created watchers and subscribers")
 
 	ctx := createContext()
+	ctx = log.Logger.WithContext(ctx)
 
+	log.Debug().Msg("Creating controller")
 	ctr := controller.NewController(watchers, subscribers)
+	log.Debug().Msg("Created controller")
 
+	log.Info().Msg("Starting controller")
 	ctr.Start(ctx)
+	log.Info().Msg("Started controller")
 
 	ctr.Wait()
 }

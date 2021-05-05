@@ -1,6 +1,9 @@
 package watcher
 
-import "github.com/RobertMe/cert-watcher/pkg/cert"
+import (
+	"context"
+	"github.com/RobertMe/cert-watcher/pkg/cert"
+)
 
 type Message struct {
 	MonitorName string
@@ -9,5 +12,5 @@ type Message struct {
 
 type Watcher interface {
 	Init() error
-	Watch(certificateChannel chan<- Message) error
+	Watch(certificateChannel chan<- Message, parentCtx context.Context) error
 }

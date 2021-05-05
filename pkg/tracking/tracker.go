@@ -1,9 +1,10 @@
 package tracking
 
 import (
+	"context"
 	"github.com/RobertMe/cert-watcher/pkg/cert"
 	"github.com/RobertMe/cert-watcher/pkg/subscriber"
-	"log"
+	"github.com/rs/zerolog/log"
 	"strings"
 )
 
@@ -34,14 +35,20 @@ func NewTracker() *Tracker {
 	}
 }
 
-func (t *Tracker) Start() {
+func (t *Tracker) Start(parentCtx context.Context) {
+	logger := log.Logger.With().Str("component", "tracker").Logger()
+	ctx := logger.WithContext(parentCtx)
 	go func() {
 		for {
 			select {
 			case certificate := <- t.certificateChangedChan:
-				t.certificateChanged(certificate)
+				t.certificateChanged(certificate, ctx)
 			case message := <- t.addSubscriptionChan:
-				t.addSubscription(message)
+				switch message.Action {
+				case subscriber.AddSubscriber:
+					t.addSubscription(message, ctx)
+					break
+				}
 			}
 		}
 	}()
@@ -55,9 +62,10 @@ func (t *Tracker) AddSubscription(message subscriber.Message) {
 	t.addSubscriptionChan <- message
 }
 
-func (t *Tracker) certificateChanged(certificate *cert.Certificate) {
+func (t *Tracker) certificateChanged(certificate *cert.Certificate, ctx context.Context) {
+	logger := log.Ctx(ctx)
+	logger.Info().Strs("names", certificate.Names).Msg("Handling changed certificate")
 	for _, name := range certificate.Names {
-		log.Println("Certificate changed for: ", name)
 		if strings.HasPrefix(name, "*.") {
 			if wildcrd, ok := t.wildcards[name]; ok {
 				for _, domain := range wildcrd.domains {
@@ -72,16 +80,17 @@ func (t *Tracker) certificateChanged(certificate *cert.Certificate) {
 		} else if item, ok := t.items[name]; ok {
 			item.updateCertificate(certificate)
 		} else {
-			item := newItem(name)
+			item := newItem(name, logger)
 			item.certificate = certificate
 			t.items[name] = item
 		}
 	}
 }
 
-func (t *Tracker) addSubscription(message subscriber.Message) {
+func (t *Tracker) addSubscription(message subscriber.Message, ctx context.Context) {
+	logger := log.Ctx(ctx)
+	logger.Info().Strs("domains", message.Domains).Msg("Adding subscription")
 	for _, domain := range message.Domains {
-		log.Println("Subscription added for:", domain)
 		if item, ok := t.items[domain]; ok {
 			item.addSubscriber(message)
 
@@ -91,7 +100,7 @@ func (t *Tracker) addSubscription(message subscriber.Message) {
 		wildcardName := "*" + domain[strings.Index(domain, "."):]
 
 		wildcrd, ok := t.wildcards[wildcardName]
-		log.Printf("Checked wildcard %s, result is %t", wildcardName, ok)
+		logger.Debug().Bool("wildcard_found", ok).Str("wildcard_name", wildcardName).Msg("Checked wildcard")
 		if !ok {
 			wildcrd = &wildcard{}
 			t.wildcards[wildcardName] = wildcrd
@@ -99,7 +108,7 @@ func (t *Tracker) addSubscription(message subscriber.Message) {
 
 		wildcrd.domains = append(wildcrd.domains, domain)
 
-		item := newItem(domain)
+		item := newItem(domain, logger)
 		t.items[domain] = item
 		item.certificate = wildcrd.certificate
 		item.addSubscriber(message)

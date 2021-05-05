@@ -6,6 +6,7 @@ import (
 	"github.com/RobertMe/cert-watcher/pkg/subscriber"
 	"github.com/RobertMe/cert-watcher/pkg/tracking"
 	"github.com/RobertMe/cert-watcher/pkg/watcher"
+	"github.com/rs/zerolog/log"
 	"time"
 )
 
@@ -33,19 +34,26 @@ func NewController(wtcr watcher.Watcher, subscr subscriber.Subscriber) *Controll
 	}
 }
 
-func (c *Controller) Start(ctx context.Context) {
+func (c *Controller) Start(parentCtx context.Context) {
+	logger := log.Ctx(parentCtx).With().Str("component", "controller").Logger()
+	ctx := logger.WithContext(parentCtx)
 	go func() {
 		<-ctx.Done()
+		logger.Info().Msg("Received stop signal")
 
 		c.Stop()
 	}()
 
+	logger.Info().Msg("Starting listeners")
 	go c.listenWatchers(ctx)
 	go c.listenSubscribers(ctx)
 
-	c.tracker.Start()
-	go c.watcher.Watch(c.watcherChan)
-	go c.subscriber.Subscribe(c.subscriberChan, ctx)
+	watcherContext := createLoggerContext("watcher", parentCtx)
+	subscriberContext := createLoggerContext("subscriber", parentCtx)
+
+	c.tracker.Start(ctx)
+	go c.watcher.Watch(c.watcherChan, watcherContext)
+	go c.subscriber.Subscribe(c.subscriberChan, subscriberContext)
 }
 
 func (c *Controller) Stop() {
@@ -74,9 +82,11 @@ func (c *Controller) Close() {
 }
 
 func (c *Controller) listenWatchers(ctx context.Context) {
+	logger := log.Ctx(ctx)
 	for {
 		select {
 		case <-ctx.Done():
+			logger.Info().Msg("Stopping watcher listener")
 			return
 		case watcherMsg := <-c.watcherChan:
 			c.tracker.CertificateChanged(&watcherMsg.Certificate)
@@ -85,9 +95,11 @@ func (c *Controller) listenWatchers(ctx context.Context) {
 }
 
 func (c *Controller) listenSubscribers(ctx context.Context) {
+	logger := log.Ctx(ctx)
 	for {
 		select {
 		case <-ctx.Done():
+			logger.Info().Msg("Stopping subscribers listener")
 			return
 		case subscriberMsg := <-c.subscriberChan:
 			if subscriberMsg.Action == subscriber.AddSubscriber {
@@ -95,4 +107,10 @@ func (c *Controller) listenSubscribers(ctx context.Context) {
 			}
 		}
 	}
+}
+
+func createLoggerContext(componentName string, parentCtx context.Context) context.Context {
+	parentLogger := log.Ctx(parentCtx)
+	logger := parentLogger.With().Str("component", componentName).Logger()
+	return logger.WithContext(parentCtx)
 }
