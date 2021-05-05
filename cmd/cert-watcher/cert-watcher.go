@@ -7,7 +7,6 @@ import (
 	"github.com/RobertMe/cert-watcher/pkg/controller"
 	subscriberChain "github.com/RobertMe/cert-watcher/pkg/subscriber/chain"
 	watcherChain "github.com/RobertMe/cert-watcher/pkg/watcher/chain"
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"os"
 	"os/signal"
@@ -19,12 +18,6 @@ func main() {
 
 	flag.Parse()
 
-	if *debug {
-		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	} else {
-		zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	}
-
 	log.Info().Msg("Start cert-watcher")
 
 	// TODO: flag
@@ -35,6 +28,8 @@ func main() {
 	}
 
 	log.Info().Interface("config", config).Msg("Loaded configuration")
+
+	configureLogging(*debug, config.Log)
 
 	log.Debug().Msg("Creating watchers and subscribers")
 	watchers := watcherChain.NewWatcherChain(*config.Watchers)
