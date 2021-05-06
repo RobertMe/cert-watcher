@@ -6,6 +6,7 @@ require (
 	github.com/Microsoft/hcsshim v0.8.16 // indirect
 	github.com/cenkalti/backoff/v4 v4.1.0
 	github.com/containerd/continuity v0.0.0-20210315143101-93e15499afd5 // indirect
+	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf // indirect
 	github.com/docker/docker v20.10.5+incompatible
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/moby/sys/mount v0.2.0 // indirect

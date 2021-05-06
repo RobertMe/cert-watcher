@@ -15,6 +15,7 @@ type Subscribers struct {
 
 type Log struct {
 	Level string `description:"Log level" json:"level" yaml:"level"`
+	Location []string `description:"One or more log locations" json:"location" yaml:"location"`
 }
 
 type Configuration struct {
