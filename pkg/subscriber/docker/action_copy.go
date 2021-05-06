@@ -8,6 +8,7 @@ import (
 	"github.com/RobertMe/cert-watcher/pkg/subscriber"
 	dockertypes "github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
+	"github.com/rs/zerolog/log"
 	"html/template"
 	"strings"
 )
@@ -50,9 +51,11 @@ func (a *actionCopy) execute(invocation subscriber.Invocation, containerId strin
 	var buf bytes.Buffer
 	tw := tar.NewWriter(&buf)
 
+	logger := log.Ctx(ctx)
+
 	defer func() {
 		if err := tw.Close(); err != nil {
-			// TODO: log
+			logger.Error().Err(err).Msg("Failed to close temporary tar file")
 		}
 	}()
 

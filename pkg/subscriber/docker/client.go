@@ -6,7 +6,7 @@ import (
 	"github.com/docker/docker/api/types/events"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
-	"log"
+	"github.com/rs/zerolog/log"
 )
 
 func (s *Subscriber) getClientOptions() ([]client.Opt, error) {
@@ -35,6 +35,7 @@ func (s *Subscriber) createClient() (client.APIClient, error) {
 }
 
 func (s *Subscriber) listContainers(client client.APIClient, ctx context.Context) error {
+	logger := log.Ctx(ctx)
 	containers, err := client.ContainerList(ctx, dockertypes.ContainerListOptions{})
 	if err != nil {
 		return err
@@ -42,10 +43,19 @@ func (s *Subscriber) listContainers(client client.APIClient, ctx context.Context
 
 	for _, container := range containers {
 		config, ok := parseContainer(container.Labels)
-		log.Println(config, ok)
+		containerLogger := logger.With().
+			Strs("container", container.Names).
+			Interface("container_labels", container.Labels).
+			Bool("ok", ok).
+			Logger()
 		if !ok {
+			containerLogger.Debug().Msg("Parsed container, no valid configuration found")
 			continue
 		}
+
+		containerLogger.Debug().
+			Interface("configuration", config).
+			Msg("Parsed container, valid configuration found")
 
 		s.addContainer(container.ID, config)
 	}
@@ -74,6 +84,7 @@ func (s *Subscriber) listenContainers(client client.APIClient, ctx context.Conte
 }
 
 func (s *Subscriber) handleStart(event events.Message, client client.APIClient, ctx context.Context) {
+	logger := log.Ctx(ctx)
 	defer func(containerId string) {
 		for i, id := range s.unblockUpdate {
 			if id == containerId {
@@ -93,7 +104,7 @@ func (s *Subscriber) handleStart(event events.Message, client client.APIClient, 
 
 	container, err := client.ContainerInspect(ctx, event.ID)
 	if err != nil {
-		// TODO: log
+		logger.Error().Err(err).Str("container_id", event.ID).Msg("Failed to introspect new container")
 		return
 	}
 
@@ -104,10 +115,20 @@ func (s *Subscriber) handleStart(event events.Message, client client.APIClient, 
 	}
 
 	config, ok := parseContainer(container.Config.Labels)
-	log.Println(config, ok)
+	containerLogger := logger.With().
+		Strs("container", []string{container.Name}).
+		Interface("container_labels", container.Config.Labels).
+		Bool("ok", ok).
+		Logger()
+
 	if !ok {
+		containerLogger.Debug().Msg("Parsed container, no valid configuration found")
 		return
 	}
+
+	containerLogger.Debug().
+		Interface("configuration", config).
+		Msg("Parsed container, valid configuration found")
 
 	s.addContainer(container.ID, config)
 }

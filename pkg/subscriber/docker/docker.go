@@ -5,15 +5,15 @@ import (
 	"github.com/RobertMe/cert-watcher/pkg/subscriber"
 	"github.com/cenkalti/backoff/v4"
 	"github.com/docker/docker/client"
-	"log"
+	"github.com/rs/zerolog/log"
 	"regexp"
 	"strings"
 	"time"
 )
 
 type configuration struct {
-	domains []string
-	actions []action
+	Domains []string
+	Actions []action
 }
 
 type Subscriber struct {
@@ -41,31 +41,47 @@ func (s *Subscriber) Init() error {
 }
 
 func (s *Subscriber) Subscribe(subscriptionChannel chan<- subscriber.Message, parentCtx context.Context) error {
+	logger := log.Ctx(parentCtx).With().Str("subscriber", "docker").Logger()
+	ctxLog := logger.WithContext(parentCtx)
 	s.subscriptionChannel = subscriptionChannel
 
 	go func(ctx context.Context) {
 		for {
 			select {
 			case <- ctx.Done():
+				logger.Info().Msg("Stopping subscriber")
 				return
 			case msg := <- s.channel:
 				s.invokeActions(msg, ctx)
 			}
 		}
-	}(parentCtx)
+	}(ctxLog)
 
 	go func() {
 		operation := func() error {
-			ctx, cancel := context.WithCancel(parentCtx)
+			ctx, cancel := context.WithCancel(ctxLog)
 			defer cancel()
 
 			client, err := s.createClient()
 			if err != nil {
-				// TODO: log
+				logger.Error().Err(err).Msg("Failed connecting to docker daemon")
 				return err
 			}
 
-			s.listContainers(client, ctx)
+			if e := log.Debug(); e.Enabled() {
+				if serverVersion, err := client.ServerVersion(ctx); err == nil {
+					logger.Debug().
+						Str("docker_version", serverVersion.Version).
+						Str("docker_api_version", serverVersion.APIVersion).
+						Msg("Connected to docker daemon")
+				}
+			}
+
+			err = s.listContainers(client, ctx)
+			if err != nil {
+				logger.Error().Err(err).Msg("Failed listing containers")
+				return err
+			}
 
 			s.listenContainers(client, ctx)
 
@@ -73,8 +89,7 @@ func (s *Subscriber) Subscribe(subscriptionChannel chan<- subscriber.Message, pa
 		}
 
 		notify := func(err error, time time.Duration) {
-			log.Println(err)
-			// TODO: log
+			logger.Error().Err(err).Dur("retry_at", time).Msg("Operation failed, retying later")
 		}
 		err := backoff.RetryNotify(
 			operation,
@@ -82,8 +97,7 @@ func (s *Subscriber) Subscribe(subscriptionChannel chan<- subscriber.Message, pa
 			notify,
 		)
 		if err != nil {
-			log.Println(err)
-			// TODO: log
+			log.Error().Err(err).Msg("Operation failed permanently, not retrying")
 		}
 	}()
 
@@ -92,7 +106,7 @@ func (s *Subscriber) Subscribe(subscriptionChannel chan<- subscriber.Message, pa
 
 func parseContainer(labels map[string]string) (configuration, bool) {
 	config := configuration{
-		actions: []action{},
+		Actions: []action{},
 	}
 	domainsLabel, ok := labels["cert-watcher.domains"]
 	if !ok {
@@ -100,13 +114,13 @@ func parseContainer(labels map[string]string) (configuration, bool) {
 	}
 
 	splitter := regexp.MustCompile("\\s*,(\\s*,*)*")
-	config.domains = splitter.Split(strings.TrimSpace(domainsLabel), -1)
+	config.Domains = splitter.Split(strings.TrimSpace(domainsLabel), -1)
 
-	if len(config.domains) == 0 {
+	if len(config.Domains) == 0 {
 		return config, false
 	}
 
-	if config.actions, ok = parseActionLabels(labels); !ok {
+	if config.Actions, ok = parseActionLabels(labels); !ok {
 		return config, false
 	}
 
@@ -117,7 +131,7 @@ func (s *Subscriber) addContainer(containerId string, config configuration) {
 	msg := subscriber.Message{
 		SubscriberName: "docker",
 		Action:         subscriber.AddSubscriber,
-		Domains:        config.domains,
+		Domains:        config.Domains,
 		UpdateData:     containerId,
 		Channel:        s.channel,
 	}
