@@ -21,8 +21,7 @@ type Subscriber struct {
 	ClientTimeout time.Duration
 
 	registeredContainers map[string]configuration
-	blockUpdate []string
-	unblockUpdate []string
+	blockUpdate map[string]int64
 
 	subscriptionChannel chan<- subscriber.Message
 	channel chan subscriber.Invocation
@@ -34,6 +33,7 @@ func (s *Subscriber) Init() error {
 	}
 
 	s.registeredContainers = map[string]configuration{}
+	s.blockUpdate = map[string]int64{}
 
 	s.channel = make(chan subscriber.Invocation, 10)
 

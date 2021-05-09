@@ -110,9 +110,9 @@ func (s *Subscriber) invokeActions(msg subscriber.Invocation, ctx context.Contex
 			return err
 		}
 
-		s.blockUpdate = append(s.blockUpdate, containerId)
+		s.blockUpdate[containerId] = 0
 		defer func() {
-			s.unblockUpdate = append(s.unblockUpdate, containerId)
+			s.blockUpdate[containerId] = time.Now().UnixNano()
 		}()
 
 		for ; currentActionIndex < len(actions); currentActionIndex++ {

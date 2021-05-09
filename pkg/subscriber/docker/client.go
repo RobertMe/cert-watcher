@@ -76,31 +76,14 @@ func (s *Subscriber) listenContainers(client client.APIClient, ctx context.Conte
 			case "start":
 				s.handleStart(event, client, ctx)
 			case "die":
-
 			}
-			case <-errChan:
+		case <-errChan:
 		}
 	}
 }
 
 func (s *Subscriber) handleStart(event events.Message, client client.APIClient, ctx context.Context) {
 	logger := log.Ctx(ctx)
-	defer func(containerId string) {
-		for i, id := range s.unblockUpdate {
-			if id == containerId {
-				s.unblockUpdate = append(s.unblockUpdate[:i], s.unblockUpdate[i+1:]...)
-
-				for i, id := range s.blockUpdate {
-					if id == containerId {
-						s.blockUpdate = append(s.blockUpdate[:i], s.blockUpdate[i+1:]...)
-						break
-					}
-				}
-
-				break
-			}
-		}
-	}(event.ID)
 
 	container, err := client.ContainerInspect(ctx, event.ID)
 	if err != nil {
@@ -108,10 +91,8 @@ func (s *Subscriber) handleStart(event events.Message, client client.APIClient, 
 		return
 	}
 
-	for _, id := range s.blockUpdate {
-		if id == container.ID {
-			return
-		}
+	if blockUntil, ok := s.blockUpdate[container.ID]; ok && (blockUntil == 0 || blockUntil > event.TimeNano) {
+		return
 	}
 
 	config, ok := parseContainer(container.Config.Labels)
