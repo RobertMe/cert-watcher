@@ -104,6 +104,11 @@ func (s *Subscriber) invokeActions(msg subscriber.Invocation, ctx context.Contex
 	logger.Info().Msg("Invoking actions on container")
 
 	operation := func() error {
+		if _, ok := s.registeredContainers[containerId]; !ok {
+			logger.Info().Msg("Container doesn't exist anymore, stopping actions")
+			return nil
+		}
+
 		client, err := s.createClient()
 		if err != nil {
 			logger.Error().Err(err).Msg("Failed connecting to docker daemon")
