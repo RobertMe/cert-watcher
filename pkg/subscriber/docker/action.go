@@ -9,10 +9,22 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 )
 
+type onErrorHandling int
+
+const (
+	onErrorRetry onErrorHandling = iota
+	onErrorStop
+	onErrorContinue
+	onErrorRestartStop
+	onErrorRestartContinue
+)
+
 type action interface {
+	onError() onErrorHandling
 	execute(invocation subscriber.Invocation, containerId string, client client.APIClient, ctx context.Context) error
 }
 
@@ -115,7 +127,41 @@ func (s *Subscriber) invokeActions(msg subscriber.Invocation, ctx context.Contex
 				continue
 			}
 
-			actionLogger.Error().Err(err).Msg("Failed invoking action")
+			switch action.onError() {
+			case onErrorRetry:
+				actionLogger.Error().Err(err).Msg("Failed invoking action, retying later")
+				return err
+			case onErrorStop:
+				actionLogger.Error().Err(err).Msg("Failed invoking action, stopping all actions")
+				return nil
+			case onErrorContinue:
+				actionLogger.Error().Err(err).Msg("Failed invoking action, continuing with next action")
+				continue
+			case onErrorRestartStop:
+				restartErr := restartContainerOnError(ctx, client, containerId)
+				if restartErr != nil {
+					logger.Error().
+						Err(err).
+						AnErr("restart_error", restartErr).
+						Msg("Tried restarting container on error, but failed as well. Retrying later.")
+					return err
+				}
+
+				actionLogger.Error().Err(err).Msg("Failed invoking action, restarted container and stopping all actions")
+				return nil
+			case onErrorRestartContinue:
+				restartErr := restartContainerOnError(ctx, client, containerId)
+				if restartErr != nil {
+					logger.Error().
+						Err(err).
+						AnErr("restart_error", restartErr).
+						Msg("Tried restarting container on error, but failed as well. Retrying later.")
+					return err
+				}
+
+				actionLogger.Error().Err(err).Msg("Failed invoking action, restarted container and continuing with next action")
+				continue
+			}
 		}
 
 		return nil
@@ -125,12 +171,38 @@ func (s *Subscriber) invokeActions(msg subscriber.Invocation, ctx context.Contex
 		logger.Error().Err(err).Dur("retry_at", time).Msg("Executing actions failed, retrying later")
 	}
 
+	backOff := backoff.NewExponentialBackOff()
+	backOff.InitialInterval = 1 * time.Second
 	err := backoff.RetryNotify(
 		operation,
-		backoff.NewExponentialBackOff(),
+		backOff,
 		notify,
 	)
 	if err != nil {
-		logger.Error().Err(err).Msg("Executing action failed permanently, not retrying")
+		logger.Error().Err(err).Msg("Executing actions failed permanently, not retrying")
 	}
+}
+
+func parseActionOnError(actionData map[string]string) onErrorHandling {
+	if onErrorValue, ok := actionData["on-error"]; ok {
+		switch strings.ToLower(onErrorValue) {
+		case "retry":
+			return onErrorRetry
+		case "stop":
+			return onErrorStop
+		case "continue":
+			return onErrorContinue
+		case "restart-stop":
+			return onErrorRestartStop
+		case "restart-continue":
+			return onErrorRestartContinue
+		}
+	}
+
+	return onErrorRetry
+}
+
+func restartContainerOnError(ctx context.Context, client client.APIClient, containerId string) error {
+	timeout := 10 * time.Second
+	return client.ContainerRestart(ctx, containerId, &timeout)
 }

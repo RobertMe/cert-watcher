@@ -8,11 +8,13 @@ import (
 )
 
 type actionRestart struct {
+	OnError onErrorHandling
 	Timeout time.Duration
 }
 
 func newRestartAction(data map[string]string) *actionRestart {
 	a := actionRestart{
+		OnError: parseActionOnError(data),
 		Timeout: 5 * time.Second,
 	}
 
@@ -23,6 +25,10 @@ func newRestartAction(data map[string]string) *actionRestart {
 	}
 
 	return &a
+}
+
+func (a *actionRestart) onError() onErrorHandling {
+	return a.OnError
 }
 
 func (a *actionRestart) execute(_ subscriber.Invocation, containerId string, client client.APIClient, ctx context.Context) error {

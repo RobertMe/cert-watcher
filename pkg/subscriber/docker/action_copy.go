@@ -14,6 +14,7 @@ import (
 )
 
 type actionCopy struct {
+	OnError          onErrorHandling
 	Destination      string
 	FileNameTemplate *template.Template
 	Format           string
@@ -21,7 +22,8 @@ type actionCopy struct {
 
 func newCopyAction(data map[string]string) *actionCopy {
 	a := actionCopy{
-		Format: "PEM",
+		OnError: parseActionOnError(data),
+		Format:  "PEM",
 	}
 
 	var ok bool
@@ -45,6 +47,10 @@ func newCopyAction(data map[string]string) *actionCopy {
 	}
 
 	return &a
+}
+
+func (a *actionCopy) onError() onErrorHandling {
+	return a.OnError
 }
 
 func (a *actionCopy) execute(invocation subscriber.Invocation, containerId string, client client.APIClient, ctx context.Context) error {

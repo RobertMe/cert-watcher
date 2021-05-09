@@ -15,10 +15,13 @@ type actionExec struct {
 	Arguments []string
 	User string
 	WorkDir string
+	OnError onErrorHandling
 }
 
 func newExecAction(data map[string]string) *actionExec {
-	a := actionExec{}
+	a := actionExec{
+		OnError: parseActionOnError(data),
+	}
 	var ok bool
 	if a.Command, ok = data["command"]; !ok {
 		return nil
@@ -49,6 +52,10 @@ func newExecAction(data map[string]string) *actionExec {
 	}
 
 	return &a
+}
+
+func (a *actionExec) onError() onErrorHandling {
+	return a.OnError
 }
 
 func (a *actionExec) execute(invocation subscriber.Invocation, containerId string, client client.APIClient, ctx context.Context) error {
