@@ -76,6 +76,7 @@ func (s *Subscriber) listenContainers(client client.APIClient, ctx context.Conte
 			case "start":
 				s.handleStart(event, client, ctx)
 			case "die":
+				s.handleStop(event, ctx)
 			}
 		case <-errChan:
 		}
@@ -112,4 +113,24 @@ func (s *Subscriber) handleStart(event events.Message, client client.APIClient, 
 		Msg("Parsed container, valid configuration found")
 
 	s.addContainer(container.ID, config)
+}
+
+func (s *Subscriber) handleStop(event events.Message, ctx context.Context) {
+	logger := log.Ctx(ctx)
+
+	containerId := event.ID
+
+	if _, ok := s.registeredContainers[containerId]; !ok {
+		logger.Debug().Str("container_id", containerId).Msg("Ignoring stop of unregistered container")
+		return
+	}
+
+	if blockUntil, ok := s.blockUpdate[containerId]; ok && (blockUntil == 0 || blockUntil > event.TimeNano) {
+		return
+	}
+
+	delete(s.registeredContainers, containerId)
+	delete(s.blockUpdate, containerId)
+
+	logger.Debug().Str("container_id", containerId).Msg("Removed stopped container")
 }
