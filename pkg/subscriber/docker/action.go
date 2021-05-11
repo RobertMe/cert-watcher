@@ -111,7 +111,7 @@ func (s *Subscriber) invokeActions(msg subscriber.Invocation, ctx context.Contex
 
 			err := action.execute(msg, containerId, client, actionCtx)
 			if err == nil {
-				actionLogger.Debug().Interface("action", action).Msg("Successfully executed action")
+				actionLogger.Debug().Msg("Successfully executed action")
 				continue
 			}
 
