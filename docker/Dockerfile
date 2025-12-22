@@ -1,14 +1,11 @@
-FROM alpine:3.13
+FROM scratch
 
 ARG VERSION
 ARG TARGETARCH
 
-RUN set -ex; \
-  FILENAME=cert-watcher-linux-$TARGETARCH; \
-  wget -O /usr/local/bin/cert-watcher "https://github.com/RobertMe/cert-watcher/releases/download/$VERSION/$FILENAME"; \
-  chmod +x /usr/local/bin/cert-watcher
+ADD --chmod=700 https://github.com/RobertMe/cert-watcher/releases/download/$VERSION/cert-watcher-linux-$TARGETARCH /cert-watcher
 
-CMD ["/usr/local/bin/cert-watcher"]
+CMD ["/cert-watcher"]
 
 LABEL org.opencontainers.image.vendor="RobertMe" \
 	org.opencontainers.image.url="https://github.com/RobertMe/cert-watcher" \
