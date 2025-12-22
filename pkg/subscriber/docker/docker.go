@@ -17,15 +17,15 @@ type configuration struct {
 }
 
 type Subscriber struct {
-	Endpoint string
+	Endpoint      string
 	ClientTimeout time.Duration
 
 	registeredContainers map[string]configuration
-	blockUpdate []string
-	unblockUpdate []string
+	blockUpdate          []string
+	unblockUpdate        []string
 
 	subscriptionChannel chan<- subscriber.Message
-	channel chan subscriber.Invocation
+	channel             chan subscriber.Invocation
 }
 
 func (s *Subscriber) Init() error {
@@ -48,10 +48,10 @@ func (s *Subscriber) Subscribe(subscriptionChannel chan<- subscriber.Message, pa
 	go func(ctx context.Context) {
 		for {
 			select {
-			case <- ctx.Done():
+			case <-ctx.Done():
 				logger.Info().Msg("Stopping subscriber")
 				return
-			case msg := <- s.channel:
+			case msg := <-s.channel:
 				s.invokeActions(msg, ctx)
 			}
 		}

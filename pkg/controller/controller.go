@@ -15,7 +15,7 @@ type Controller struct {
 	subscriber subscriber.Subscriber
 	tracker    *tracking.Tracker
 
-	watcherChan chan watcher.Message
+	watcherChan    chan watcher.Message
 	subscriberChan chan subscriber.Message
 
 	stopChannel chan bool
@@ -23,11 +23,11 @@ type Controller struct {
 
 func NewController(wtcr watcher.Watcher, subscr subscriber.Subscriber) *Controller {
 	return &Controller{
-		watcher:     wtcr,
-		subscriber:  subscr,
-		tracker:	 tracking.NewTracker(),
+		watcher:    wtcr,
+		subscriber: subscr,
+		tracker:    tracking.NewTracker(),
 
-		watcherChan: make(chan watcher.Message, 100),
+		watcherChan:    make(chan watcher.Message, 100),
 		subscriberChan: make(chan subscriber.Message, 100),
 
 		stopChannel: make(chan bool, 1),

@@ -11,7 +11,7 @@ const (
 )
 
 type Invocation struct {
-	Domain 		string
+	Domain      string
 	Certificate cert.Certificate
 	Data        interface{}
 }

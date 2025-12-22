@@ -11,10 +11,10 @@ import (
 )
 
 type actionExec struct {
-	Command string
+	Command   string
 	Arguments []string
-	User string
-	WorkDir string
+	User      string
+	WorkDir   string
 }
 
 func newExecAction(data map[string]string) *actionExec {
@@ -53,10 +53,10 @@ func newExecAction(data map[string]string) *actionExec {
 
 func (a *actionExec) execute(invocation subscriber.Invocation, containerId string, client client.APIClient, ctx context.Context) error {
 	config := dockertypes.ExecConfig{
-		Cmd: append([]string{a.Command}, a.Arguments...),
-		User: a.User,
+		Cmd:        append([]string{a.Command}, a.Arguments...),
+		User:       a.User,
 		WorkingDir: a.WorkDir,
-		Detach: true,
+		Detach:     true,
 	}
 
 	response, err := client.ContainerExecCreate(ctx, containerId, config)

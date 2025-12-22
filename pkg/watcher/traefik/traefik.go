@@ -18,8 +18,8 @@ type Watcher struct {
 	AcmePath string `description:"Path to the acme.json file" json:"acme_path" yaml:"acme_path"`
 
 	certificateChannel chan<- watcher.Message
-	watcher *fsnotify.Watcher
-	watching string
+	watcher            *fsnotify.Watcher
+	watching           string
 }
 
 func (w *Watcher) Init() error {
@@ -53,10 +53,10 @@ func (w *Watcher) Watch(certificateChannel chan<- watcher.Message, parentCtx con
 					(event.Op&fsnotify.Create == fsnotify.Create || event.Op&fsnotify.Write == fsnotify.Write) {
 					w.readFile(&logger)
 				}
-				case err := <-w.watcher.Errors:
-					logger.Error().Err(err).Msg("Error watching for acme.json changes")
-				case <-ctx.Done():
-					return
+			case err := <-w.watcher.Errors:
+				logger.Error().Err(err).Msg("Error watching for acme.json changes")
+			case <-ctx.Done():
+				return
 			}
 		}
 	}()

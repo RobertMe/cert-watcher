@@ -78,7 +78,7 @@ func (s *Subscriber) listenContainers(client client.APIClient, ctx context.Conte
 			case "die":
 
 			}
-			case <-errChan:
+		case <-errChan:
 		}
 	}
 }

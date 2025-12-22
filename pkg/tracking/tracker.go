@@ -9,29 +9,29 @@ import (
 )
 
 type wildcard struct {
-	domains []string
+	domains     []string
 	certificate *cert.Certificate
 }
 
 type Tracker struct {
 	items map[string]*item
 
-	wildcards map[string]*wildcard
-	unmatchedSubscribers  map[string]*item
+	wildcards            map[string]*wildcard
+	unmatchedSubscribers map[string]*item
 
 	certificateChangedChan chan *cert.Certificate
-	addSubscriptionChan chan subscriber.Message
+	addSubscriptionChan    chan subscriber.Message
 }
 
 func NewTracker() *Tracker {
 	return &Tracker{
-		items:     make(map[string]*item),
+		items: make(map[string]*item),
 
-		wildcards: make(map[string]*wildcard),
+		wildcards:            make(map[string]*wildcard),
 		unmatchedSubscribers: make(map[string]*item),
 
 		certificateChangedChan: make(chan *cert.Certificate, 100),
-		addSubscriptionChan: make(chan subscriber.Message, 100),
+		addSubscriptionChan:    make(chan subscriber.Message, 100),
 	}
 }
 
@@ -41,9 +41,9 @@ func (t *Tracker) Start(parentCtx context.Context) {
 	go func() {
 		for {
 			select {
-			case certificate := <- t.certificateChangedChan:
+			case certificate := <-t.certificateChangedChan:
 				t.certificateChanged(certificate, ctx)
-			case message := <- t.addSubscriptionChan:
+			case message := <-t.addSubscriptionChan:
 				switch message.Action {
 				case subscriber.AddSubscriber:
 					t.addSubscription(message, ctx)
@@ -73,7 +73,7 @@ func (t *Tracker) certificateChanged(certificate *cert.Certificate, ctx context.
 				}
 			} else {
 				t.wildcards[name] = &wildcard{
-					domains: []string{},
+					domains:     []string{},
 					certificate: certificate,
 				}
 			}
