@@ -5,12 +5,13 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"github.com/RobertMe/cert-watcher/pkg/subscriber"
-	dockertypes "github.com/docker/docker/api/types"
-	"github.com/docker/docker/client"
-	"github.com/rs/zerolog/log"
 	"html/template"
 	"strings"
+
+	"github.com/RobertMe/cert-watcher/pkg/subscriber"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/client"
+	"github.com/rs/zerolog/log"
 )
 
 type actionCopy struct {
@@ -67,7 +68,7 @@ func (a *actionCopy) execute(invocation subscriber.Invocation, containerId strin
 		}
 	}
 
-	err := client.CopyToContainer(ctx, containerId, a.Destination, &buf, dockertypes.CopyToContainerOptions{})
+	err := client.CopyToContainer(ctx, containerId, a.Destination, &buf, container.CopyToContainerOptions{})
 	if err != nil {
 		return err
 	}

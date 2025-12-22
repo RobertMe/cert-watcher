@@ -2,7 +2,8 @@ package docker
 
 import (
 	"context"
-	dockertypes "github.com/docker/docker/api/types"
+
+	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/events"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
@@ -36,7 +37,7 @@ func (s *Subscriber) createClient() (client.APIClient, error) {
 
 func (s *Subscriber) listContainers(client client.APIClient, ctx context.Context) error {
 	logger := log.Ctx(ctx)
-	containers, err := client.ContainerList(ctx, dockertypes.ContainerListOptions{})
+	containers, err := client.ContainerList(ctx, container.ListOptions{})
 	if err != nil {
 		return err
 	}
@@ -65,9 +66,9 @@ func (s *Subscriber) listContainers(client client.APIClient, ctx context.Context
 
 func (s *Subscriber) listenContainers(client client.APIClient, ctx context.Context) {
 	f := filters.NewArgs()
-	f.Add("type", events.ContainerEventType)
+	f.Add("type", "container")
 
-	eventsChan, errChan := client.Events(ctx, dockertypes.EventsOptions{Filters: f})
+	eventsChan, errChan := client.Events(ctx, events.ListOptions{Filters: f})
 
 	for {
 		select {

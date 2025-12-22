@@ -2,12 +2,13 @@ package docker
 
 import (
 	"context"
-	"github.com/RobertMe/cert-watcher/pkg/subscriber"
-	dockertypes "github.com/docker/docker/api/types"
-	"github.com/docker/docker/client"
 	"regexp"
 	"sort"
 	"strconv"
+
+	"github.com/RobertMe/cert-watcher/pkg/subscriber"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/client"
 )
 
 type actionExec struct {
@@ -52,7 +53,7 @@ func newExecAction(data map[string]string) *actionExec {
 }
 
 func (a *actionExec) execute(invocation subscriber.Invocation, containerId string, client client.APIClient, ctx context.Context) error {
-	config := dockertypes.ExecConfig{
+	config := container.ExecOptions{
 		Cmd:        append([]string{a.Command}, a.Arguments...),
 		User:       a.User,
 		WorkingDir: a.WorkDir,
@@ -64,7 +65,7 @@ func (a *actionExec) execute(invocation subscriber.Invocation, containerId strin
 		return err
 	}
 
-	execStartCheck := dockertypes.ExecStartCheck{
+	execStartCheck := container.ExecStartOptions{
 		Detach: true,
 		Tty:    false,
 	}
