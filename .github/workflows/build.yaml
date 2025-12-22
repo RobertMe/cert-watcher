@@ -34,7 +34,7 @@ jobs:
           GOARCH: ${{ matrix.arch }}
           CGO_ENABLED: 0
       - name: Upload
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v6
         with:
           name: cert-watcher-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.os == 'windows' && '.exe' || '' }}
           path: dist/cert-watcher-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.os == 'windows' && '.exe' || '' }}
