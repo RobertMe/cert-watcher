@@ -30,7 +30,7 @@ func (s *Subscriber) createClient() (client.APIClient, error) {
 	}
 	options = append(options, client.WithHTTPHeaders(httpHeaders))
 
-	options = append(options, client.WithVersion("1.24"))
+	options = append(options, client.WithAPIVersionNegotiation())
 
 	return client.NewClientWithOpts(options...)
 }
